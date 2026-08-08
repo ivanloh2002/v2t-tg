@@ -89,14 +89,14 @@ def write_config(cfg: dict) -> None:
     content = f'''"""Сгенерировано start.py — первичная настройка бота."""
 
 # Модель Whisper: tiny / base / small / medium / large-v3
-WHISPER_MODEL = "{cfg['whisper_model']}"
+WHISPER_MODEL = "{cfg["whisper_model"]}"
 # Устройство: cuda / cpu
-WHISPER_DEVICE = "{cfg['whisper_device']}"
+WHISPER_DEVICE = "{cfg["whisper_device"]}"
 # Пост-обработка: True — whisper + qwen, False — только whisper
-USE_QWEN = {cfg['use_qwen']}
+USE_QWEN = {cfg["use_qwen"]}
 # Доступ: "public" — все, "whitelist" — только перечисленные ID
-ACCESS = "{cfg['access']}"
-ALLOWED_USERS = {cfg['allowed_users']}
+ACCESS = "{cfg["access"]}"
+ALLOWED_USERS = {cfg["allowed_users"]}
 '''
     CONFIG_FILE.write_text(content, encoding="utf-8")
 
@@ -128,7 +128,9 @@ def main() -> None:
     use_qwen = ask_choice("Режим обработки:", ["whisper + qwen", "только whisper"], default=0) == 0
 
     print("\n--- Доступ ---")
-    access = ["whitelist", "public"][ask_choice("Доступ к боту:", ["вайтлист по ID", "свободный"], default=1)]
+    access = ["whitelist", "public"][
+        ask_choice("Доступ к боту:", ["вайтлист по ID", "свободный"], default=1)
+    ]
     allowed_users = []
     if access == "whitelist":
         allowed_users = ask_ids("ID Telegram-пользователей (через запятую)")
@@ -149,20 +151,24 @@ def main() -> None:
         print("Отменено.")
         sys.exit(0)
 
-    write_env({
-        "API_TOKEN": api_token,
-        "PROXY_URL": proxy,
-        "OPENROUTER_API_KEY": openrouter_key,
-        "MODEL": model,
-        "HF_TOKEN": hf_token,
-    })
-    write_config({
-        "whisper_model": whisper_model,
-        "whisper_device": whisper_device,
-        "use_qwen": use_qwen,
-        "access": access,
-        "allowed_users": allowed_users,
-    })
+    write_env(
+        {
+            "API_TOKEN": api_token,
+            "PROXY_URL": proxy,
+            "OPENROUTER_API_KEY": openrouter_key,
+            "MODEL": model,
+            "HF_TOKEN": hf_token,
+        }
+    )
+    write_config(
+        {
+            "whisper_model": whisper_model,
+            "whisper_device": whisper_device,
+            "use_qwen": use_qwen,
+            "access": access,
+            "allowed_users": allowed_users,
+        }
+    )
     print("\nГотово! Запуск бота: ./run.sh  (или .venv/bin/python bot.py)")
 
 
