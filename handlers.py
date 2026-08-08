@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from dataclasses import dataclass
 
 import config
 import short
@@ -58,13 +59,19 @@ def _get_model() -> WhisperModel:
     return _model
 
 
-# расшифровка сериализована: две одновременно могут уронить VRAM
-_transcribe_lock = asyncio.Lock()
+# очередь: гс обрабатываются строго по одному, в порядке отправки,
+# чтобы две расшифровки одновременно не уронили VRAM
 
 
-async def _transcribe_with_lock(file_path: str) -> str:
-    async with _transcribe_lock:
-        return await asyncio.to_thread(_run_transcribe, file_path)
+@dataclass
+class Job:
+    file_path: str
+    message: types.Message
+    waiting_msg: types.Message
+
+
+queue: asyncio.Queue[Job] = asyncio.Queue()
+worker: asyncio.Task | None = None
 
 
 def _run_transcribe(file_path: str) -> str:
@@ -75,6 +82,40 @@ def _run_transcribe(file_path: str) -> str:
         except Exception as e:
             logger.warning("Qwen пост-обработка не удалась, отправлен сырой текст: %s", e)
     return text
+
+
+async def safe_edit(msg, text):
+    try:
+        await msg.edit_text(text)
+    except Exception:
+        pass
+
+
+async def worker_run():
+    while True:
+        job = await queue.get()
+        try:
+            await safe_edit(job.waiting_msg, "⏰Идёт расшифровка...")
+            text = await asyncio.to_thread(_run_transcribe, job.file_path)
+            _store_last(job.message.chat.id, text)
+            await safe_delete(job.waiting_msg)
+            await send_result(job.message, text)
+        except Exception as e:
+            await safe_delete(job.waiting_msg)
+            await job.message.answer(f"Ошибка при расшифровке: {e}")
+        finally:
+            queue.task_done()
+
+
+def ensure_worker():
+    global worker
+    if worker is None or worker.done():
+        worker = asyncio.create_task(worker_run())
+
+
+async def enqueue(job: Job):
+    ensure_worker()
+    await queue.put(job)
 
 
 _last_text: dict[int, str] = {}
@@ -161,25 +202,22 @@ async def media(message: types.Message):
 
     if message.voice:
         file_path = f"{message.voice.file_unique_id}.ogg"
-        waiting = "⏰Сообщение получено, идёт расшифровка..."
+        processing = "⏰Сообщение получено, идёт расшифровка..."
     else:
         file_path = f"{message.video_note.file_unique_id}.mp4"
-        waiting = "⏰Видеосообщение получено, идёт расшифровка..."
+        processing = "⏰Видеосообщение получено, идёт расшифровка..."
 
     await message.bot.download(
         file=message.voice or message.video_note,
         destination=file_path,
     )
-    msg = await message.answer(waiting)
-
-    try:
-        text = await _transcribe_with_lock(file_path)
-        _store_last(message.chat.id, text)
-        await safe_delete(msg)
-        await send_result(message, text)
-    except Exception as e:
-        await safe_delete(msg)
-        await message.answer(f"Ошибка при расшифровке: {e}")
+    position = queue.qsize() + 1
+    if position == 1:
+        waiting = processing
+    else:
+        waiting = f"⏳Вы в очереди (позиция {position}). Идёт расшифровка предыдущих сообщений..."
+    waiting_msg = await message.answer(waiting)
+    await enqueue(Job(file_path=file_path, message=message, waiting_msg=waiting_msg))
 
 
 # пересказ

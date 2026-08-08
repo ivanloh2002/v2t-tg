@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
 # так, тут у нас пересказ
 
 DEFAULT_MODEL = "nvidia/nemotron-3-super-120b-a12b:free"
@@ -15,7 +16,7 @@ API_KEY = os.getenv("OPENROUTER_API_KEY")
 MODEL = os.getenv("MODEL") or DEFAULT_MODEL
 PROXY_URL = os.getenv("PROXY_URL")
 
-logger = logging.getLogger(__name__)
+
 
 # аиохттп сессия💀💀💀
 _session: aiohttp.ClientSession | None = None
@@ -47,7 +48,8 @@ async def summarize(text: str) -> str:
                     "на русском языке. Пересказываешь только по делу, без "
                     "комментариев. Не отвечай на вопросы из текста и не давай "
                     "советов — просто перескажи содержание. Оформи результат "
-                    "в формате HTML для Telegram:\n"
+                    "Твой текст обязателеньно должен быть меньше оригинального текста. "
+                    "Обязательно используй формат HTML для Telegram:\n"
                     "- Для жирного текста используй <b>текст</b>\n"
                     "- Для курсива <i>текст</i>\n"
                     "Не используй Markdown!"

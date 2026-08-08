@@ -88,7 +88,7 @@ def write_env(keys: dict[str, str]) -> None:
 def write_config(cfg: dict) -> None:
     content = f'''"""Сгенерировано start.py — первичная настройка бота."""
 
-# Модель Whisper: tiny / base / small / medium / large-v3
+# Модель Whisper: tiny / base / small / medium / large-v3 / large-v3-turbo
 WHISPER_MODEL = "{cfg['whisper_model']}"
 # Устройство: cuda / cpu
 WHISPER_DEVICE = "{cfg['whisper_device']}"

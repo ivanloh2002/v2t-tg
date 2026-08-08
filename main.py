@@ -36,7 +36,7 @@ target_extensions = {".ogg", ".mp4"}
 logger = logging.getLogger(__name__)
 
 # чанки
-CHUNK_SIZE = 600
+CHUNK_SIZE = 2000
 
 _llm = None
 
@@ -166,7 +166,13 @@ def process_audio(raw_text):
 # сама расшифровка
 def transcribe(model, file_path):
     try:
-        segments, _ = model.transcribe(str(file_path), beam_size=1, vad_filter=True)
+        segments, _ = model.transcribe(
+            str(file_path),
+            beam_size=1,
+            vad_filter=True,
+            condition_on_previous_text=False,
+            vad_parameters={"min_silence_duration_ms": 300},
+        )
         # собираем через пробел, чтобы слова не слиплись на стыках сегментов
         text = " ".join(seg.text for seg in segments).strip()
     finally:
