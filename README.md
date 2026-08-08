@@ -53,12 +53,13 @@ v2t-tg/
 ```
 ## **Как запустить?** ##
 
-1. Установите зависимости: `uv add -r requirements.txt`
-2. Зайдите в бот https://web.telegram.org/k/#@BotFather и создайте нового бота. Скопируйте токен бота.
-3. Заригестрируйтесь на **Hugging Face** и получите API ключи: [https://huggingface.co/](https://huggingface.co/)
-4. Также зарегистрируйтесь и получите API ключи в **OpenRouter**: https://openrouter.ai/
-5. Запустите **start.py**, введите API ключи, Прокси и настройте так, как вам надо.  
-6. Запустите **run.sh** для запуска бота.
+1. инициализировать uv - `uv init`
+2. Установите зависимости: `uv add -r requirements.txt`
+3. Зайдите в бот https://web.telegram.org/k/#@BotFather и создайте нового бота. Скопируйте токен бота.
+4. Заригестрируйтесь на **Hugging Face** и получите API ключи: [https://huggingface.co/](https://huggingface.co/)
+5. Также зарегистрируйтесь и получите API ключи в **OpenRouter**: https://openrouter.ai/
+6. Запустите **start.py**, введите API ключи, Прокси и настройте так, как вам надо.  
+7. Запустите **run.sh** для запуска бота.
 
 
 
