@@ -4,7 +4,7 @@ import logging
 import os
 from dotenv import load_dotenv
 from llama_cpp import Llama
-from huggingface_hub import snapshot_download
+from huggingface_hub import hf_hub_download
 import config
 
 
@@ -46,11 +46,14 @@ def _get_llm():
     if _llm is not None:
         return _llm
     try:
-        _qwen_dir = snapshot_download(
+        # качаем только нужный файл, а не весь снапшот репы (там 20+ квантований,
+        # суммарно ~70 ГБ — snapshot_download без allow_patterns скачал бы всё)
+        _gguf_path = hf_hub_download(
             "unsloth/Qwen3.5-4B-GGUF",
+            filename="Qwen3.5-4B-Q5_K_M.gguf",
         )
         _llm = Llama(
-            model_path=os.path.join(_qwen_dir, "Qwen3.5-4B-Q5_K_M.gguf"),
+            model_path=_gguf_path,
             n_gpu_layers=-1,
             n_ctx=4096
         )
