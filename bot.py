@@ -15,6 +15,7 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 from handlers import user
+from main import setup_proxy_env
 import short
 
 from dotenv import load_dotenv
@@ -26,6 +27,9 @@ import logging
 load_dotenv()
 API_TOKEN = os.getenv("API_TOKEN")
 PROXY_URL = os.getenv("PROXY_URL")
+
+# пробрасываем прокси в окружение: их читает huggingface_hub при скачивании моделей
+setup_proxy_env()
 
 if not API_TOKEN:
     print("API_TOKEN не найден в .env. Запустите .venv/bin/python start.py")

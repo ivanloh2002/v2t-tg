@@ -16,6 +16,18 @@ load_dotenv()
 if os.getenv("HF_TOKEN"):
     os.environ.setdefault("HF_TOKEN", os.getenv("HF_TOKEN"))
 
+# проброс PROXY_URL в env для huggingface_hub: httpx внутри него читает эти
+# переменные при скачивании моделей
+def setup_proxy_env() -> None:
+    proxy = os.getenv("PROXY_URL")
+    if proxy:
+        os.environ.setdefault("HTTP_PROXY", proxy)
+        os.environ.setdefault("HTTPS_PROXY", proxy)
+        os.environ.setdefault("ALL_PROXY", proxy)
+        logger.info("Скачивание моделей с HuggingFace идёт через прокси: %s", proxy)
+    else:
+        logger.info("PROXY_URL не задан — модели качаются напрямую")
+
 # ищет телеграмовские .ogg и .mp4 файлы
 # .ogg - это гс
 script_dir = Path(__file__).parent
@@ -36,7 +48,6 @@ def _get_llm():
     try:
         _qwen_dir = snapshot_download(
             "unsloth/Qwen3.5-4B-GGUF",
-            local_files_only=True,
         )
         _llm = Llama(
             model_path=os.path.join(_qwen_dir, "Qwen3.5-4B-Q5_K_M.gguf"),
@@ -162,6 +173,7 @@ def transcribe(model, file_path):
 
 # если хотите использовать без тг бота (почему-то)
 if __name__ == "__main__":
+    setup_proxy_env()
     files = [
         f.name for f in script_dir.iterdir()
         if f.is_file() and f.suffix.lower() in target_extensions
@@ -177,7 +189,6 @@ if __name__ == "__main__":
         config.WHISPER_MODEL,
         device=config.WHISPER_DEVICE,
         compute_type="int8_float16" if config.WHISPER_DEVICE == "cuda" else "int8",
-        local_files_only=True
     )
     text = transcribe(model, file_path)
     print(process_audio(text))

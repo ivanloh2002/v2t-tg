@@ -54,7 +54,6 @@ def _get_model() -> WhisperModel:
             config.WHISPER_MODEL,
             device=config.WHISPER_DEVICE,
             compute_type="int8_float16" if config.WHISPER_DEVICE == "cuda" else "int8",
-            local_files_only=True,
         )
     return _model
 
