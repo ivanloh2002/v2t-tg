@@ -35,7 +35,7 @@ else:
     if ALLOWED_IDS:
         logger.warning("ACCESS=public, но ALLOWED_USERS заполнен — вайтлист фактически выключен, доступ открыт всем")
 
-# Как раз таки проверка доступа
+# как раз таки проверка доступа
 def _check_access(message: types.Message) -> bool:
     if config.ACCESS != "whitelist":
         return True
@@ -153,7 +153,7 @@ async def start(message: types.Message):
                          "Время распознавания зависит от длины видео/голосового сообщения.")
 
 
-# Обработка гс и кружочков
+# обработка гс и кружочков
 @user.message(F.voice | F.video_note)
 async def media(message: types.Message):
     if not _check_access(message):

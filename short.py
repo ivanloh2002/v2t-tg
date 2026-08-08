@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Так, тут у нас пересказ
+# так, тут у нас пересказ
 
 DEFAULT_MODEL = "nvidia/nemotron-3-super-120b-a12b:free"
 

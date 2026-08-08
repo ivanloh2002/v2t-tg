@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-#эт проверка на наличие конфигов
+# эт проверка на наличие конфигов
 if not (Path(__file__).parent / ".env").is_file() or not (Path(__file__).parent / "config.py").is_file():
     print("Конфигурация не найдена. Запустите первичную настройку: .venv/bin/python start.py")
     sys.exit(1)
@@ -40,7 +40,7 @@ async def set_main_menu(bot: Bot):
     ]
     await bot.set_my_commands(commands)
 
-# Ну тут ясно
+# ну тут ясно
 async def main():
     session = AiohttpSession(proxy=PROXY_URL)
     bot = Bot(token=API_TOKEN, session=session)

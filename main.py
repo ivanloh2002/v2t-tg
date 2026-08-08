@@ -49,7 +49,7 @@ def _get_llm():
         _llm = False
     return _llm
 
-#  разбивает текст на чанки, сохраняя абзацы
+# разбивает текст на чанки, сохраняя абзацы
 def _chunk_text(text: str, size: int = CHUNK_SIZE) -> list[str]:
     chunks = []
     current = []
@@ -76,8 +76,8 @@ def _chunk_text(text: str, size: int = CHUNK_SIZE) -> list[str]:
     flush()
     return chunks or [text]
 
-#  если модель выдаст «мышление» (шаблон Qwen3.5 подставляет префикс <think>/response)
-#  и оно утечёт в content — отрезаем его и оставляем только ответ
+# если модель выдаст «мышление» (шаблон Qwen3.5 подставляет префикс <think>/response)
+# и оно утечёт в content — отрезаем его и оставляем только ответ
 def _clean_output(content: str) -> str:
     content = content.strip()
     for marker in ("<think>", "</think>", " response\n\n"):
@@ -87,7 +87,7 @@ def _clean_output(content: str) -> str:
     return content
 
 def process_audio(raw_text):
-    # Шаг 2: Пост-обработка локальной LLM
+    # шаг 2: Пост-обработка локальной LLM
     if not config.USE_QWEN:
         return raw_text
     stripped = raw_text.strip()
