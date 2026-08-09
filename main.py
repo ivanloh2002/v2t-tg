@@ -1,14 +1,12 @@
+from faster_whisper import WhisperModel
+from pathlib import Path
 import logging
 import os
-from pathlib import Path
-from typing import cast
-
 from dotenv import load_dotenv
-from faster_whisper import WhisperModel
+from llama_cpp import Llama
 from huggingface_hub import hf_hub_download
-from llama_cpp import CreateChatCompletionResponse, Llama
-
 import config
+
 
 load_dotenv()
 # некоторые говнососы говорят, что токен от хф необязателен, но это ложь. У меня банально не запустился бот
@@ -16,7 +14,7 @@ load_dotenv()
 # этот токен нужен для whisper т.к я использую whisper-faster а не обычный
 # т.к обычный нельзя квантовать
 if os.getenv("HF_TOKEN"):
-    os.environ.setdefault("HF_TOKEN", os.getenv("HF_TOKEN", ""))
+    os.environ.setdefault("HF_TOKEN", os.getenv("HF_TOKEN"))
 
 # проброс PROXY_URL в env для huggingface_hub: httpx внутри него читает эти
 # переменные при скачивании моделей
@@ -104,6 +102,8 @@ def _clean_output(content: str) -> str:
 
 def process_audio(raw_text):
     # шаг 2: Пост-обработка локальной LLM
+    if len(raw_text) == 0:
+        return f'[По всей видимости, в аудио нету речи]'
     if not config.USE_QWEN:
         return raw_text
     stripped = raw_text.strip()
@@ -136,8 +136,7 @@ def process_audio(raw_text):
                 ],
                 temperature=0.2,  # низкая температура, чтобы модель не галюцинировала
             )
-            response = cast(CreateChatCompletionResponse, response)
-            fixed = _clean_output(response["choices"][0]["message"]["content"] or "")
+            fixed = _clean_output(response["choices"][0]["message"]["content"])
         except Exception as e:
             logger.warning("Ошибка локальной модели: %s", e)
             fixed = chunk
