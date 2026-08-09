@@ -1,84 +1,84 @@
+[**Read in Russian**](README_ru.md)🇷🇺
+
 # **v2t-tg Bot** #
 **voice to text*
 
-Это бот для расшифровки ваших голосовых/видео сообщений.  В основе лежит **faster_whisper** для перевода **из аудио в текст**.
+This is a bot for transcribing your voice/video messages. It's powered by **faster_whisper** to convert **audio to text**.
 
-Также использована Локальная модель **unsloth/Qwen3.5-4B-GGUF** для доработки текста из whisper-а
+There's also a local model **unsloth/Qwen3.5-4B-GGUF** used to polish the text after whisper.
 
-Вы просто отправляете боту голосовое или видео сообщение и вам выведется текст. Также есть **функция пересказа**, основанная на **nvidia/nemotron-3-super-120b-a12b:free** 
+You simply send the bot a voice or video message and it gives you the text. There's also a **retelling feature**, based on **nvidia/nemotron-3-super-120b-a12b:free**
+The best part is that this project is **ABSOLUTELY FREE**
 
-Самое главное, что этот проект **АБСОЛЮТНО БЕСПЛАТНЫЙ**
+I just hope people will run it **locally**. I mean, either one person or a small group, since I've no idea who could afford renting a server with specs like these in 2026 without any benefit from it.
 
-Я просто надеюсь что его будут **локально использовать**. Ну, в палне либо один человек либо небольшое количество, т.к я хз кто может себе в 2026 позволить арендовать серв с такими характеристиками и не иметь никакой выгоды с этого.
+## **How this works in more detail** ##
 
-## **Подробнее как это работает** ##
+It uses **faster_whisper**.
 
-Здесь используется **faster_whisper** 
-
-требования разных моделей(указано c квантованием **int8_float16**):
-| whisper | VRAM, ГБ | Физический вес файла | параметры | 
+Requirements for different models (shown with **int8_float16** quantization):
+| whisper | VRAM, GB | File size on disk | Parameters |
 | :--- | :---: | :---: | :---: |
-| tiny | ~0,3–0,4 | ~80 МБ| 39M |
-| base | ~0,4–0,5  | ~150 МБ | 74M |
-| small | ~0,6–0,8  | ~490 МБ |244M |
-| medium |~1,2–1,5  | 1,53 ГБ | 769M |
-| large-v3 | ~2,0–2,5 | ~3,1 ГБ| 1550M |
-| large-v3-turbo | ~1,2–1,6 | 1,62 ГБ | 809M |
+| tiny | ~0.3–0.4 | ~80 MB | 39M |
+| base | ~0.4–0.5  | ~150 MB | 74M |
+| small | ~0.6–0.8  | ~490 MB | 244M |
+| medium | ~1.2–1.5  | 1.53 GB | 769M |
+| large-v3 | ~2.0–2.5 | ~3.1 GB | 1550M |
+| large-v3-turbo | ~1.2–1.6 | 1.62 GB | 809M |
 
-(*лично я использую модель large-v3-turbo, и вам советую*)
+(*I personally use the large-v3-turbo model, and I recommend it to you*)
 
-После расшифровки текста, модель unsloth/Qwen3.5-4B-GGUF используется для доработки текста. Она ставит пунктуацию и исправляет ошибки в тексте. занимает **~3.5 гига VRAM**.
+After the transcription, the unsloth/Qwen3.5-4B-GGUF model is used to polish the text. It adds punctuation and fixes mistakes. Takes **~3.5 GB of VRAM**.
 
-Как работает пересказ? Очень просто: по OpenRouter api отправляется к nvidia/nemotron-3-super-120b-a12b:free промпт с уже обработанным текстом. 
+How does the retelling work? Very simple: a prompt with the already-processed text is sent to nvidia/nemotron-3-super-120b-a12b:free via the OpenRouter API.
 
-## Производительность ##
+## Performance ##
 
-Я использую ноутбук с RTX3070ti на 8 гигов VRAM. Он переводил сообщение **длиной в 7 минут за 44 секунды** (На модели *medium*) (я считал по логам aiograma). А на модели *large-v3-turbo* Это же гс у меня обработалось за **30 секунд**. Это, если что, время полного цикла, т.е расшифровка + доработка.
+I use a laptop with an RTX 3070 Ti with 8 gigs of VRAM. It handled a **7-minute-long message in 44 seconds** (on the *medium* model) (I counted it from the aiogram logs). And on the *large-v3-turbo* model the same message took **30 seconds** for me. That's, if anything, the full cycle time, i.e. transcription + polishing.
 
 
 
-Самое смешное, что расшифровка в тг премиум не справилась с этим же гс хахахах
+The funniest thing is that TG Premium transcription couldn't handle this same message hahaha
 
-Это хороший и показательный результат , как мне кажется.
-## **Структура проекта** ##
+That's a good and telling result, if you ask me.
+## **Project structure** ##
 
 ```
 v2t-tg/
-├── start.py        # первичная настройка
-├── run.sh          # запуск
-├── bot.py          # главный файл
-├── main.py         # расшифровка текста
-├── handlers.py     # хэндлеры
-├── short.py        # пересказ
+├── start.py        # initial setup
+├── run.sh          # launch
+├── bot.py          # main file
+├── main.py         # transcription
+├── handlers.py     # handlers
+├── short.py        # retelling
 │
-├── config.py       # конфигурация
-├── .env            # переменные окружения
+├── config.py       # configuration
+├── .env            # environment variables
 │
-├── pyproject.toml  # зависимости и конфигурация проекта
-├── uv.lock         # зафиксированные версии зависимостей
-├── .python-version # версия Python
-├── .gitignore      # игнорируемые файлы
-├── LICENSE         # лицензия
-└── README.md       # описание
+├── pyproject.toml  # dependencies and project config
+├── uv.lock         # pinned dependency versions
+├── .python-version # Python version
+├── .gitignore      # ignored files
+├── LICENSE         # license
+└── README.md       # description
 ```
-## **Как запустить?** ##
+## **How to run it?** ##
 
-1. Установите зависимости: `uv sync`
-2. Зайдите в бот https://web.telegram.org/k/#@BotFather и создайте нового бота. Скопируйте токен бота.
-3. Зарегистрируйтесь на **Hugging Face** и получите API ключи: [https://huggingface.co/](https://huggingface.co/)
-4. Также зарегистрируйтесь и получите API ключи в **OpenRouter**: https://openrouter.ai/
-5. Запустите **start.py**, введите API ключи, Прокси и настройте так, как вам надо.  
-6. Запустите **run.sh** для запуска бота.
+1. Install the dependencies: `uv sync`
+2. Go to the bot [**BotFather**](https://web.telegram.org/k/#@BotFather) and create a new bot. Copy the token.
+3. Register on [**Hugging Face**](https://huggingface.co/) and get an API key. 
+4. Also register and get an API key on [**OpenRouter**]( https://openrouter.ai/).
+5. Run **start.py**, enter the API keys, the proxy, and configure everything the way you need.
+6. Run **run.sh** to start the bot.
 
 
 
-## **Сслыки** ##
+## **Links** ##
 
-Модель nvidia/nemotron-3-super-120b-a12b:free: https://openrouter.ai/nvidia/nemotron-3-ultra-550b-a55b:free
+nvidia/nemotron-3-super-120b-a12b:free model: https://openrouter.ai/nvidia/nemotron-3-super-120b-a12b:free
 
-Квен: https://huggingface.co/unsloth/Qwen3.5-4B-GGUF
+Qwen: https://huggingface.co/unsloth/Qwen3.5-4B-GGUF
 
-## **Примечание к коду** ##
+## **Code notes** ##
 
-Если вас бесит очень большое количество бессмысленных логов, можете написать *verbose=False,* в main.py в экземпляре класса Llama _llm на 58-ой строке. Но учтите, что это отключает **все** логи от llama_cpp, в том числе и важные. 
-
+If a huge number of meaningless logs gets on your nerves, you can write *verbose=False,* in main.py in the instance of the Llama class _llm on line 58. But keep in mind that it disables **all** llama_cpp logs, including the important ones.
