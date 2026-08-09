@@ -10,7 +10,6 @@ from llama_cpp import CreateChatCompletionResponse, Llama
 
 import config
 
-
 load_dotenv()
 # некоторые говнососы говорят, что токен от хф необязателен, но это ложь. У меня банально не запустился бот
 # так что придётся регаться на хг ахахахаххахаха
@@ -106,7 +105,7 @@ def _clean_output(content: str) -> str:
 def process_audio(raw_text):
     # шаг 2: Пост-обработка локальной LLM
     if len(raw_text) == 0:
-        return f'[По всей видимости, в аудио нету речи]'
+        return '[По всей видимости, в аудио нету речи]'
     if not config.USE_QWEN:
         return raw_text
     stripped = raw_text.strip()
