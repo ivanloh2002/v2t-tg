@@ -7,7 +7,7 @@ SCRIPT_DIR = Path(__file__).parent
 ENV_FILE = SCRIPT_DIR / ".env"
 CONFIG_FILE = SCRIPT_DIR / "config.py"
 
-WHISPER_MODELS = ["tiny", "base", "small", "medium", "large-v3"]
+WHISPER_MODELS = ["tiny", "base", "small", "medium", "large-v3", "large-v3-turbo"]
 DEFAULT_MODEL = "nvidia/nemotron-3-super-120b-a12b:free"
 
 
