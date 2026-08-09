@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from pathlib import Path
 from typing import cast
 
@@ -57,7 +58,7 @@ def _get_llm():
         _llm = Llama(
             model_path=_gguf_path,
             n_gpu_layers=-1,
-            n_ctx=4096
+            n_ctx=4096,
         )
     except Exception as e:
         # если модель не скачана/не грузится — не роняем всю расшифровку
@@ -111,6 +112,8 @@ def process_audio(raw_text):
     stripped = raw_text.strip()
     if not stripped:
         return raw_text
+    if len(raw_text.split()) <= 100:
+        return raw_text
 
     llm = _get_llm()
     if not llm:
@@ -118,6 +121,7 @@ def process_audio(raw_text):
     results = []
     failed_chunks = 0
     total_chunks = 0
+    start = time.perf_counter()
     for chunk in _chunk_text(stripped):
         total_chunks += 1
         prompt = (
@@ -166,10 +170,17 @@ def process_audio(raw_text):
             total_chunks,
         )
 
+    logger.info(
+        "Qwen: пост-обработка заняла %.2f сек (%d чанков)",
+        time.perf_counter() - start,
+        total_chunks,
+    )
+
     return "\n\n".join(results)
 
 # сама расшифровка
 def transcribe(model, file_path):
+    start = time.perf_counter()
     try:
         segments, _ = model.transcribe(
             str(file_path),
@@ -182,6 +193,7 @@ def transcribe(model, file_path):
         text = " ".join(seg.text for seg in segments).strip()
     finally:
         os.remove(file_path)
+    logger.info("Whisper: распознавание заняло %.2f сек", time.perf_counter() - start)
     return text
 
 

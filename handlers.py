@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from dataclasses import dataclass
 
 from aiogram import F, Router, types
@@ -78,12 +79,14 @@ worker: asyncio.Task | None = None
 
 
 def _run_transcribe(file_path: str) -> str:
+    start = time.perf_counter()
     text = transcribe(_get_model(), file_path)
     if config.USE_QWEN:
         try:
             text = process_audio(text)
         except Exception as e:
             logger.warning("Qwen пост-обработка не удалась, отправлен сырой текст: %s", e)
+    logger.info("Расшифровка заняла %.2f сек (%s)", time.perf_counter() - start, file_path)
     return text
 
 
