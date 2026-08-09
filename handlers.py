@@ -2,14 +2,14 @@ import asyncio
 import logging
 from dataclasses import dataclass
 
-import config
-import short
-from aiogram import F, Router
-from aiogram import types
+from aiogram import F, Router, types
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, CommandStart
 from faster_whisper import WhisperModel
+
+import config
+import short
 from main import process_audio, transcribe
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,10 @@ if config.ACCESS == "whitelist":
         logger.warning("ACCESS=whitelist, но список пуст/не распарсен — доступ закрыт ВСЕМ!")
 else:
     if ALLOWED_IDS:
-        logger.warning("ACCESS=public, но ALLOWED_USERS заполнен — вайтлист фактически выключен, доступ открыт всем")
+        logger.warning(
+            "ACCESS=public, но ALLOWED_USERS заполнен — вайтлист фактически выключен, доступ открыт всем"
+        )
+
 
 # как раз таки проверка доступа
 def _check_access(message: types.Message) -> bool:
@@ -176,6 +179,7 @@ async def send_html(message: types.Message, text: str):
         except TelegramBadRequest:
             await message.answer(prefix + chunk)
 
+
 # отправляет сообщение об отказе доступа
 async def _denied(message: types.Message):
     user = message.from_user
@@ -187,10 +191,12 @@ async def _denied(message: types.Message):
 
 @user.message(CommandStart())
 async def start(message: types.Message):
-    await message.answer("Отправьте сюда видео/голосовое сообщение для расшифровки.\n"
-                         " Ваши сообщения не сохраняются, так что не бойтесь. "
-                         "Сразу после расшифровки они удаляются.\n"
-                         "Время распознавания зависит от длины видео/голосового сообщения.")
+    await message.answer(
+        "Отправьте сюда видео/голосовое сообщение для расшифровки.\n"
+        " Ваши сообщения не сохраняются, так что не бойтесь. "
+        "Сразу после расшифровки они удаляются.\n"
+        "Время распознавания зависит от длины видео/голосового сообщения."
+    )
 
 
 # обработка гс и кружочков
@@ -200,6 +206,10 @@ async def media(message: types.Message):
         await _denied(message)
         return
 
+    media_file = message.voice or message.video_note
+    if media_file is None:
+        return
+
     if message.voice:
         file_path = f"{message.voice.file_unique_id}.ogg"
         processing = "⏰Сообщение получено, идёт расшифровка..."
@@ -207,8 +217,12 @@ async def media(message: types.Message):
         file_path = f"{message.video_note.file_unique_id}.mp4"
         processing = "⏰Видеосообщение получено, идёт расшифровка..."
 
-    await message.bot.download(
-        file=message.voice or message.video_note,
+    bot = message.bot
+    if bot is None:
+        return
+
+    await bot.download(
+        file=media_file,
         destination=file_path,
     )
     position = queue.qsize() + 1
@@ -221,7 +235,7 @@ async def media(message: types.Message):
 
 
 # пересказ
-@user.message(Command('short'))
+@user.message(Command("short"))
 async def cmd_short(message: types.Message):
     if not _check_access(message):
         await _denied(message)
@@ -241,7 +255,9 @@ async def cmd_short(message: types.Message):
 
 
 # неудаляёте пжпжпжп😭😭😭😭
-@user.message(Command('info'))
+@user.message(Command("info"))
 async def info(message: types.Message):
-    await message.answer("Информация о боте:\nтут используется либа whisper от openai\
-        \nТакже используется локальная моедль unsloth/Qwen3.5-4B-GGUF для исправления текста\nдля пересказа используется nvidia/nemotron-3-super-120b-a12b:free по API через OpenRouter\nВ сумме всё это занимает менее 8 гигабайт VRAM\nБот тестировался на ноутбучной RTX3070ti \nУ меня получалось что-то окло 44 секнуд на расшифровку 7-ми минутного гс, на модели medium\nПримичательно, что расшифровщик который в тг прем не смог справиться с этой задачей\n\nМой тг, обращаться по вопросам: @larp13337\nМой гитхаб:https://github.com/ivanloh2002/\nПожайлуста, если берёте моего бота с гх не удаляйте этот текст, будьте людми\n\nСпасибо что используете моего бота!!!!")
+    await message.answer(
+        "Информация о боте:\nтут используется либа whisper от openai\
+        \nТакже используется локальная моедль unsloth/Qwen3.5-4B-GGUF для исправления текста\nдля пересказа используется nvidia/nemotron-3-super-120b-a12b:free по API через OpenRouter\nВ сумме всё это занимает менее 8 гигабайт VRAM\nБот тестировался на ноутбучной RTX3070ti \nУ меня получалось что-то окло 44 секнуд на расшифровку 7-ми минутного гс, на модели medium\nПримичательно, что расшифровщик который в тг прем не смог справиться с этой задачей\n\nМой тг, обращаться по вопросам: @larp13337\nМой гитхаб:https://github.com/ivanloh2002/\nПожайлуста, если берёте моего бота с гх не удаляйте этот текст, будьте людми\n\nСпасибо что используете моего бота!!!!"
+    )

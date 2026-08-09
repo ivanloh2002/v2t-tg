@@ -93,7 +93,11 @@ async def summarize(text: str) -> str:
             return text
         content = content.strip()
         if len(content) < 30:
-            logger.warning("OpenRouter: подозрительно короткий ответ (%s симв.): %s", len(content), content[:100])
+            logger.warning(
+                "OpenRouter: подозрительно короткий ответ (%s симв.): %s",
+                len(content),
+                content[:100],
+            )
             return text
         return content
     except Exception as e:
