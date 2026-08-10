@@ -79,15 +79,16 @@ queue: asyncio.Queue[Job] = asyncio.Queue()
 worker: asyncio.Task | None = None
 
 
-def _run_transcribe(file_path: str) -> str:
-    start = time.perf_counter()
-    text = transcribe(_get_model(), file_path)
+def _transcribe_only(file_path: str) -> str:
+    return transcribe(_get_model(), file_path)
+
+
+def _post_process(text: str) -> str:
     if config.USE_QWEN:
         try:
-            text = process_audio(text)
+            return process_audio(text)
         except Exception as e:
             logger.warning("Qwen пост-обработка не удалась, отправлен сырой текст: %s", e)
-    logger.info("Расшифровка заняла %.2f сек (%s)", time.perf_counter() - start, file_path)
     return text
 
 
@@ -101,13 +102,29 @@ async def safe_edit(msg, text):
 async def worker_run():
     while True:
         job = await queue.get()
+        job_start = time.perf_counter()
         try:
             if job.queued:
                 await safe_edit(job.waiting_msg, "⏰Идёт расшифровка...")
-            text = await asyncio.to_thread(_run_transcribe, job.file_path)
-            _store_last(job.message.chat.id, text)
-            await safe_delete(job.waiting_msg)
-            await send_result(job.message, text)
+            raw = await asyncio.to_thread(_transcribe_only, job.file_path)
+            if getattr(config, "STREAM_RESULT", False) and config.USE_QWEN:
+                # стрим: сразу отправляем сырой текст от whisper,
+                # потом заменяем его на текст от Qwen в тех же сообщениях
+                await safe_delete(job.waiting_msg)
+                sent = await send_result(job.message, raw)
+                text = await asyncio.to_thread(_post_process, raw)
+                _store_last(job.message.chat.id, text)
+                await _update_result(job.message, sent, text)
+            else:
+                text = await asyncio.to_thread(_post_process, raw)
+                _store_last(job.message.chat.id, text)
+                await safe_delete(job.waiting_msg)
+                await send_result(job.message, text)
+            logger.info(
+                "Расшифровка заняла %.2f сек (%s)",
+                time.perf_counter() - job_start,
+                job.file_path,
+            )
         except Exception as e:
             await safe_delete(job.waiting_msg)
             await job.message.answer(f"Ошибка при расшифровке: {e}")
@@ -166,12 +183,29 @@ def split_text(text: str, max_len: int = 4096) -> list[str]:
     return chunks or [""]
 
 
-# отправляет по чанкам
-async def send_result(message: types.Message, text: str):
+# отправляет по чанкам; возвращает отправленные сообщения, чтобы потом
+# заменить их финальным текстом в стрим-режиме
+async def send_result(message: types.Message, text: str) -> list[types.Message]:
+    chunks = split_text(text)
+    sent = []
+    for i, chunk in enumerate(chunks):
+        prefix = "Результат:\n" if i == 0 else ""
+        sent.append(await message.answer(prefix + chunk))
+    return sent
+
+
+# заменяет уже отправленные сообщения финальным текстом; если текст стал
+# длиннее — досылает, короче — удаляет лишние
+async def _update_result(message: types.Message, sent: list[types.Message], text: str) -> None:
     chunks = split_text(text)
     for i, chunk in enumerate(chunks):
         prefix = "Результат:\n" if i == 0 else ""
-        await message.answer(prefix + chunk)
+        if i < len(sent):
+            await safe_edit(sent[i], prefix + chunk)
+        else:
+            sent.append(await message.answer(prefix + chunk))
+    for extra in sent[len(chunks):]:
+        await safe_delete(extra)
 
 
 # отправляет соо с хтмл чтобы было красиво

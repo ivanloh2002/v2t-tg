@@ -99,6 +99,8 @@ WHISPER_MODEL = "{cfg['whisper_model']}"
 WHISPER_DEVICE = "{cfg["whisper_device"]}"
 # Пост-обработка: True — whisper + qwen, False — только whisper
 USE_QWEN = {cfg["use_qwen"]}
+# Режим вывода: True — сразу сырой текст whisper, затем замена на обработанный; False — только финальный
+STREAM_RESULT = {cfg["stream_result"]}
 # Qwen: репозиторий HuggingFace и файл GGUF-квантования
 # unsloth/Qwen3.5-4B-GGUF / unsloth/Qwen3.5-2B-GGUF
 QWEN_REPO = "{cfg["qwen_repo"]}"
@@ -137,10 +139,16 @@ def main() -> None:
     print("\n--- Пост-обработка ---")
     use_qwen = ask_choice("Режим обработки:", ["whisper + qwen", "только whisper"], default=0) == 0
     qwen_repo, qwen_model = QWEN_MODELS[0]
+    stream_result = False
     if use_qwen:
         qwen_repo, qwen_model = QWEN_MODELS[
             ask_choice("Модель Qwen:", [name for _, name in QWEN_MODELS], default=0)
         ]
+        stream_result = ask_choice(
+            "Режим вывода результата:",
+            ["сразу сырой текст, затем заменить на обработанный", "показывать только после обработки"],
+            default=0,
+        ) == 0
 
     print("\n--- Доступ ---")
     access = ["whitelist", "public"][
@@ -160,6 +168,7 @@ def main() -> None:
     print(f"Обработка:            {'whisper + qwen' if use_qwen else 'только whisper'}")
     if use_qwen:
         print(f"Qwen:                 {qwen_model}")
+        print(f"Вывод результата:     {'стрим (сразу сырой, затем замена)' if stream_result else 'только после обработки'}")
     if access == "whitelist":
         print(f"Доступ:               вайтлист: {', '.join(map(str, allowed_users))}")
     else:
@@ -182,6 +191,7 @@ def main() -> None:
             "whisper_model": whisper_model,
             "whisper_device": whisper_device,
             "use_qwen": use_qwen,
+            "stream_result": stream_result,
             "qwen_repo": qwen_repo,
             "qwen_model": qwen_model,
             "access": access,

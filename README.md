@@ -32,6 +32,8 @@ Requirements for different models (shown with **int8_float16** quantization):
 
 After the transcription, the unsloth/Qwen3.5-4B-GGUF model is used to polish the text. It adds punctuation and fixes mistakes. Takes **~3.5 GB of VRAM**.
 
+There's also a separate text-sending mode: first the raw whisper text is sent right away, and then, once the processed one is ready, it replaces the initial one. **It doesn't affect performance at all**, but it makes the bot look faster.
+
 In total, during work it usually takes about **4610 MB of VRAM** for me (with the *qwen3.5-4b-q5* model and *large-v3-turbo*). But, counting other apps, that's **6 gigs out of 8**.
 
 How does the retelling work? Very simple: a prompt with the already-processed text is sent to nvidia/nemotron-3-super-120b-a12b:free via the OpenRouter API.

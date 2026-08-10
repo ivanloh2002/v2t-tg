@@ -63,7 +63,8 @@ def _get_llm():
             n_gpu_layers=-1,
             n_ctx=4096,
             flash_attn=is_flash_attn(),
-            n_batch=1024
+            n_batch=1024,
+            verbose=False
         )
     except Exception as e:
         # если модель не скачана/не грузится — не роняем всю расшифровку
