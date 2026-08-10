@@ -9,6 +9,11 @@ CONFIG_FILE = SCRIPT_DIR / "config.py"
 
 WHISPER_MODELS = ["tiny", "base", "small", "medium", "large-v3", "large-v3-turbo"]
 DEFAULT_MODEL = "nvidia/nemotron-3-super-120b-a12b:free"
+QWEN_MODELS = [
+    ("unsloth/Qwen3.5-4B-GGUF", "Qwen3.5-4B-Q4_K_M.gguf"),
+    ("unsloth/Qwen3.5-4B-GGUF", "Qwen3.5-4B-Q5_K_M.gguf"),
+    ("unsloth/Qwen3.5-2B-GGUF", "Qwen3.5-2B-Q5_K_M.gguf"),
+]
 
 
 def ask_str(prompt: str, *, default: str = "", required: bool = False) -> str:
@@ -94,6 +99,11 @@ WHISPER_MODEL = "{cfg['whisper_model']}"
 WHISPER_DEVICE = "{cfg["whisper_device"]}"
 # Пост-обработка: True — whisper + qwen, False — только whisper
 USE_QWEN = {cfg["use_qwen"]}
+# Qwen: репозиторий HuggingFace и файл GGUF-квантования
+# unsloth/Qwen3.5-4B-GGUF / unsloth/Qwen3.5-2B-GGUF
+QWEN_REPO = "{cfg["qwen_repo"]}"
+# Qwen3.5-4B-Q4_K_M.gguf / Qwen3.5-4B-Q5_K_M.gguf / Qwen3.5-2B-Q5_K_M.gguf
+QWEN_MODEL = "{cfg["qwen_model"]}"
 # Доступ: "public" — все, "whitelist" — только перечисленные ID
 ACCESS = "{cfg["access"]}"
 ALLOWED_USERS = {cfg["allowed_users"]}
@@ -126,6 +136,11 @@ def main() -> None:
 
     print("\n--- Пост-обработка ---")
     use_qwen = ask_choice("Режим обработки:", ["whisper + qwen", "только whisper"], default=0) == 0
+    qwen_repo, qwen_model = QWEN_MODELS[0]
+    if use_qwen:
+        qwen_repo, qwen_model = QWEN_MODELS[
+            ask_choice("Модель Qwen:", [name for _, name in QWEN_MODELS], default=0)
+        ]
 
     print("\n--- Доступ ---")
     access = ["whitelist", "public"][
@@ -143,6 +158,8 @@ def main() -> None:
     print(f"HF_TOKEN:             {'указан' if hf_token else '(нет)'}")
     print(f"Whisper:              {whisper_model} ({whisper_device})")
     print(f"Обработка:            {'whisper + qwen' if use_qwen else 'только whisper'}")
+    if use_qwen:
+        print(f"Qwen:                 {qwen_model}")
     if access == "whitelist":
         print(f"Доступ:               вайтлист: {', '.join(map(str, allowed_users))}")
     else:
@@ -165,6 +182,8 @@ def main() -> None:
             "whisper_model": whisper_model,
             "whisper_device": whisper_device,
             "use_qwen": use_qwen,
+            "qwen_repo": qwen_repo,
+            "qwen_model": qwen_model,
             "access": access,
             "allowed_users": allowed_users,
         }

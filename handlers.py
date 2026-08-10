@@ -72,6 +72,7 @@ class Job:
     file_path: str
     message: types.Message
     waiting_msg: types.Message
+    queued: bool = False
 
 
 queue: asyncio.Queue[Job] = asyncio.Queue()
@@ -101,7 +102,8 @@ async def worker_run():
     while True:
         job = await queue.get()
         try:
-            await safe_edit(job.waiting_msg, "⏰Идёт расшифровка...")
+            if job.queued:
+                await safe_edit(job.waiting_msg, "⏰Идёт расшифровка...")
             text = await asyncio.to_thread(_run_transcribe, job.file_path)
             _store_last(job.message.chat.id, text)
             await safe_delete(job.waiting_msg)
@@ -234,7 +236,7 @@ async def media(message: types.Message):
     else:
         waiting = f"⏳Вы в очереди (позиция {position}). Идёт расшифровка предыдущих сообщений..."
     waiting_msg = await message.answer(waiting)
-    await enqueue(Job(file_path=file_path, message=message, waiting_msg=waiting_msg))
+    await enqueue(Job(file_path=file_path, message=message, waiting_msg=waiting_msg, queued=position > 1))
 
 
 # пересказ
