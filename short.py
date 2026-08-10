@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 
 import aiohttp
 from aiohttp_socks import ProxyConnector
@@ -37,6 +38,11 @@ async def summarize(text: str) -> str:
     if not API_KEY:
         logger.warning("OpenRouter: OPENROUTER_API_KEY не задан в .env")
         return text
+    if not text or not text.strip():
+        logger.warning("OpenRouter: пустой текст для пересказа")
+        return text
+    logger.info("OpenRouter: пересказ: %d символов, модель=%s", len(text), MODEL)
+    start = time.perf_counter()
     session = await _get_session()
     payload = {
         "model": MODEL,
@@ -92,6 +98,13 @@ async def summarize(text: str) -> str:
             logger.warning("OpenRouter: пустой ответ")
             return text
         content = content.strip()
+        elapsed = time.perf_counter() - start
+        logger.info(
+            "OpenRouter: пересказ готов: %d -> %d символов за %.2f сек",
+            len(text),
+            len(content),
+            elapsed,
+        )
         if len(content) < 30:
             logger.warning(
                 "OpenRouter: подозрительно короткий ответ (%s симв.): %s",
