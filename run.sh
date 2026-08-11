@@ -4,4 +4,4 @@
 # изза чего у меня в проекте хахахаха, две развне версии куда.
 # ну это плохо, ну а что я сделаю
 export LD_LIBRARY_PATH="$(.venv/bin/python -c 'import os; import nvidia.cublas, nvidia.cudnn; print(os.path.join(nvidia.cublas.__path__[0], "lib") + ":" + os.path.join(nvidia.cudnn.__path__[0], "lib"))')"
-exec .venv/bin/python bot.py "$@"
+exec .venv/bin/python "${1:-bot.py}" "${@:2}"

@@ -34,7 +34,7 @@ def setup_proxy_env() -> None:
 # ищет телеграмовские .ogg и .mp4 файлы
 # .ogg - это гс
 script_dir = Path(__file__).parent
-target_extensions = {".ogg", ".mp4"}
+target_extensions = {".ogg", ".mp4", ".mp3", ".flac", ".mov", ".avi", ".mkv", ".wmv", ".webm",".flv", ".3gp", ".m4a" , ".aac", ".wav"}
 
 logger = logging.getLogger(__name__)
 

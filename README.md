@@ -5,7 +5,7 @@
 
 **Please**, read the README fully to avoid any misunderstandings.
 
-This is a bot for transcribing your voice/video messages. It's powered by **faster_whisper** to convert **audio to text**.
+This is a bot for transcribing your voice/video messages, and even just plain videos and audio files. It's powered by **faster_whisper** to convert **audio to text**.
 
 There's also a local model **unsloth/Qwen3.5-4B-GGUF** used to polish the text after whisper.
 
@@ -16,7 +16,21 @@ I just hope people will run it **locally**. I mean, either one person or a small
 
 ## **How this works in more detail** ##
 
-It uses **faster_whisper**.
+Before running it, you need to gather all the API keys and a proxy (which ones exactly are listed in the **How to run it?** section). Then run start.py. These are the settings in start.py:
+
+* **API** keys and tokens (Telegram, OpenRouter, HuggingFace)
+* **Proxy**
+* The *whisper* model (which one to pick and how — explained below)
+* Whether to use **GPU or CPU**
+* Which *whisper* model to use
+* Whether to use **qwen or just whisper**
+* If yes, which *qwen3.5* model to use
+* Whether to deliver results **right away or in parts** (more on that below, the second paragraph after the table)
+* Which **retelling model** to use
+* Access type: **public or whitelist**
+* If whitelist, **which users have access** (provide their **ids**)
+
+**faster_whisper** is used to transcribe the audio.
 
 Requirements for different models (shown with **int8_float16** quantization):
 | whisper | VRAM, GB | File size on disk | Parameters |
@@ -46,7 +60,7 @@ The funniest thing is that TG Premium transcription couldn't handle this same me
 
 That's a good and telling result, for my opinion. 
 
-There's also support for *qwen3.5-2b-q5*, which is way faster — about **160 tokens per second**, compared to *qwen3.5-4b-q4* (**82 tokens per second**) and *qwen3.5-4b-q5* (**72 tokens per second**). Ultimately, decoding with *qwen2.5-2b-q5* is **27% faster**. But the 2-billion-parameter qwen is **much worse in quality**, so choose for yourselves.
+There's also support for *qwen3.5-2b-q5*, which is way faster — about **160 tokens per second**, compared to *qwen3.5-4b-q4* (**82 tokens per second**) and *qwen3.5-4b-q5* (**72 tokens per second**). Ultimately, decoding with *qwen3.5-2b-q5* is **27% faster**. But the 2-billion-parameter qwen is **much worse in quality**, so choose for yourselves.
 
 ## **Project structure** ##
 
@@ -77,6 +91,8 @@ v2t-tg/
 4. Also register and get an API key on [**OpenRouter**]( https://openrouter.ai/).
 5. Run **start.py**, enter the API keys, the proxy, and configure everything the way you need.
 6. Run **run.sh** to start the bot.
+
+**You can also use `run.sh main.py` to run the decryption process separately, without the Telegram bot.*
 
 
 

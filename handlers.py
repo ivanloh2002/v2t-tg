@@ -2,6 +2,7 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass
+from pathlib import Path
 
 from aiogram import F, Router, types
 from aiogram.enums import ParseMode
@@ -239,22 +240,62 @@ async def start(message: types.Message):
 
 
 # обработка гс и кружочков
-@user.message(F.voice | F.video_note)
+# видео-форматы, которые поддерживает транскрибация (PyAV читает любой контейнер ffmpeg)
+VIDEO_EXTS = {".mp4", ".avi", ".mkv", ".wmv", ".webm", ".flv", ".3gp"}
+AUDIO_EXTS = {".mp3", ".flac", ".m4a", ".aac", ".wav"}
+
+
+@user.message(F.voice | F.video_note | F.video | F.document | F.audio)
 async def media(message: types.Message):
     if not _check_access(message):
         await _denied(message)
         return
 
-    media_file = message.voice or message.video_note
+    media_file = message.voice or message.video_note or message.video or message.document or message.audio
     if media_file is None:
         return
 
     if message.voice:
         file_path = f"{message.voice.file_unique_id}.ogg"
-        processing = "⏰Сообщение получено, идёт расшифровка..."
-    else:
+        processing = "⏰Голосовое получено, идёт расшифровка..."
+    elif message.video_note:
         file_path = f"{media_file.file_unique_id}.mp4"
         processing = "⏰Видеосообщение получено, идёт расшифровка..."
+    elif message.audio:
+        name = getattr(media_file, "file_name", "") or ""
+        ext = Path(name).suffix.lower()
+        if ext not in AUDIO_EXTS:
+            mime = getattr(media_file, "mime_type", "") or ""
+            if mime.startswith("audio/"):
+                ext = ".mp3"
+            else:
+                await message.answer(
+                    "Отправьте аудио в правильном расширении (mp3, m4a, aac, wav, flac) или голосовое сообщение."
+                )
+                return
+        file_path = f"{media_file.file_unique_id}{ext}"
+        processing = "⏰Аудио получено, идёт расшифровка..."
+
+    else:
+        name = getattr(media_file, "file_name", "") or ""
+        ext = Path(name).suffix.lower()
+        mime = getattr(media_file, "mime_type", "") or ""
+        if ext in VIDEO_EXTS or mime.startswith("video/"):
+            if ext not in VIDEO_EXTS:
+                ext = ".mp4"
+            file_path = f"{media_file.file_unique_id}{ext}"
+            processing = "⏰Видео получено, идёт расшифровка..."
+        elif ext in AUDIO_EXTS or mime.startswith("audio/"):
+            if ext not in AUDIO_EXTS:
+                ext = ".mp3"
+            file_path = f"{media_file.file_unique_id}{ext}"
+            processing = "⏰Аудио получено, идёт расшифровка..."
+        else:
+            await message.answer(
+                "Отправьте видео (mp4, avi, mkv, wmv, webm, flv, 3gp), аудио (mp3, m4a, aac, wav, flac) или голосовое сообщение."
+            )
+            return
+
 
     bot = message.bot
     if bot is None:
