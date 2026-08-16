@@ -12,7 +12,7 @@ from faster_whisper import WhisperModel
 
 import config
 import short
-from main import process_audio, transcribe
+from main import _llm_backend, process_audio, process_audio_api, transcribe
 
 logger = logging.getLogger(__name__)
 
@@ -84,12 +84,15 @@ def _transcribe_only(file_path: str) -> str:
     return transcribe(_get_model(), file_path)
 
 
-def _post_process(text: str) -> str:
-    if config.USE_QWEN:
-        try:
-            return process_audio(text)
-        except Exception as e:
-            logger.warning("Qwen пост-обработка не удалась, отправлен сырой текст: %s", e)
+async def _post_process(text: str) -> str:
+    backend = _llm_backend()
+    try:
+        if backend == "api":
+            return await process_audio_api(text)
+        if backend == "qwen":
+            return await asyncio.to_thread(process_audio, text)
+    except Exception as e:
+        logger.warning("Пост-обработка не удалась, отправлен сырой текст: %s", e)
     return text
 
 
@@ -108,16 +111,17 @@ async def worker_run():
             if job.queued:
                 await safe_edit(job.waiting_msg, "⏰Идёт расшифровка...")
             raw = await asyncio.to_thread(_transcribe_only, job.file_path)
-            if getattr(config, "STREAM_RESULT", False) and config.USE_QWEN:
+            stream = getattr(config, "STREAM_RESULT", False) and _llm_backend() != "off"
+            if stream:
                 # стрим: сразу отправляем сырой текст от whisper,
-                # потом заменяем его на текст от Qwen в тех же сообщениях
+                # потом заменяем его на обработанный текст в тех же сообщениях
                 await safe_delete(job.waiting_msg)
                 sent = await send_result(job.message, raw)
-                text = await asyncio.to_thread(_post_process, raw)
+                text = await _post_process(raw)
                 _store_last(job.message.chat.id, text)
                 await _update_result(job.message, sent, text)
             else:
-                text = await asyncio.to_thread(_post_process, raw)
+                text = await _post_process(raw)
                 _store_last(job.message.chat.id, text)
                 await safe_delete(job.waiting_msg)
                 await send_result(job.message, text)

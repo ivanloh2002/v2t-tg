@@ -23,8 +23,8 @@ Before running it, you need to gather all the API keys and a proxy (which ones e
 * The *whisper* model (which one to pick and how — explained below)
 * Whether to use **GPU or CPU**
 * Which *whisper* model to use
-* Whether to use **qwen or just whisper**
-* If yes, which *qwen3.5* model to use
+* Whether to use **qwen (local processing), just whisper, or via API (OpenRouter)**
+* If qwen/API, which *model* to use
 * Whether to deliver results **right away or in parts** (more on that below, the second paragraph after the table)
 * Which **retelling model** to use
 * Access type: **public or whitelist**
@@ -45,6 +45,8 @@ Requirements for different models (shown with **int8_float16** quantization):
 (*I personally use the large-v3-turbo model, and I recommend it to you*)
 
 After the transcription, the unsloth/Qwen3.5-4B-GGUF model is used to polish the text. It adds punctuation and fixes mistakes. Takes **~3.5 GB of VRAM**.
+
+There's also an option of post-processing via the **API** through *OpenRouter*. I *personally use nvidia/nemotron-3-super-120b-a12b:free*. It won't use any VRAM, but the post-processing will be **significantly slower**.
 
 There's also a separate text-sending mode: first the raw whisper text is sent right away, and then, once the processed one is ready, it replaces the initial one. **It doesn't affect performance at all**, but it makes the bot look faster.
 

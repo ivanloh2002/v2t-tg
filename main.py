@@ -4,6 +4,8 @@ import time
 from pathlib import Path
 from typing import cast
 
+import aiohttp
+from aiohttp_socks import ProxyConnector
 from dotenv import load_dotenv
 from faster_whisper import WhisperModel
 from huggingface_hub import hf_hub_download
@@ -42,6 +44,13 @@ logger = logging.getLogger(__name__)
 CHUNK_SIZE = 3000
 
 _llm = None
+
+
+# совместимость со старым config.py (USE_QWEN без LLM_BACKEND)
+def _llm_backend() -> str:
+    if hasattr(config, "LLM_BACKEND"):
+        return config.LLM_BACKEND
+    return "qwen" if getattr(config, "USE_QWEN", False) else "off"
 
 
 def _get_llm():
@@ -165,7 +174,7 @@ def process_audio(raw_text):
     # шаг 2: Пост-обработка локальной LLM
     if len(raw_text) == 0:
         return '[По всей видимости, в аудио нету речи]'
-    if not config.USE_QWEN:
+    if _llm_backend() == "off":
         return raw_text
     stripped = raw_text.strip()
     if not stripped:
@@ -233,6 +242,126 @@ def process_audio(raw_text):
 
     return "\n\n".join(results)
 
+
+# ---------- пост-обработка LLM по API (OpenRouter) ----------
+
+API_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+_api_session: aiohttp.ClientSession | None = None
+
+
+async def _get_api_session() -> aiohttp.ClientSession:
+    global _api_session
+    if _api_session is None or _api_session.closed:
+        proxy = os.getenv("PROXY_URL")
+        connector = ProxyConnector.from_url(proxy) if proxy else None
+        _api_session = aiohttp.ClientSession(connector=connector)
+    return _api_session
+
+
+async def close_api_session():
+    global _api_session
+    if _api_session is not None and not _api_session.closed:
+        await _api_session.close()
+
+
+async def _post_chunk(session: aiohttp.ClientSession, system_prompt: str, prompt: str) -> str:
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    model = getattr(config, "API_LLM_MODEL", "") or os.getenv("MODEL") or "nvidia/nemotron-3-super-120b-a12b:free"
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt},
+        ],
+        "temperature": 0.2,  # низкая температура, чтобы модель не галюцинировала
+        "max_tokens": 4096,  # чанки по 3000 символов могут не влезть в 2048
+        "reasoning": {"enabled": False},  # без этого рассуждения модели «протекают» в content
+    }
+    async with session.post(
+        API_URL,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        timeout=aiohttp.ClientTimeout(total=120),
+    ) as resp:
+        body = await resp.text()
+        if resp.status != 200:
+            logger.warning("OpenRouter (пост-обработка): HTTP %s: %s", resp.status, body[:500])
+            return ""
+        data = await resp.json(content_type=None)
+    choices = data.get("choices")
+    if not choices:
+        logger.warning("OpenRouter (пост-обработка): ответ без choices: %s", body[:500])
+        return ""
+    content = choices[0]["message"]["content"]
+    if not content or not content.strip():
+        logger.warning("OpenRouter (пост-обработка): пустой ответ")
+        return ""
+    return _clean_output(content)
+
+
+async def process_audio_api(raw_text: str) -> str:
+    # шаг 2: Пост-обработка LLM по API (OpenRouter), промпты те же, что у Qwen 4B
+    if len(raw_text) == 0:
+        return '[По всей видимости, в аудио нету речи]'
+    if _llm_backend() != "api":
+        return raw_text
+    stripped = raw_text.strip()
+    if not stripped:
+        return raw_text
+    if len(raw_text.split()) <= 100:
+        return raw_text
+    if not os.getenv("OPENROUTER_API_KEY"):
+        logger.warning("OpenRouter: OPENROUTER_API_KEY не задан — сырой текст")
+        return raw_text
+
+    session = await _get_api_session()
+    results = []
+    failed_chunks = 0
+    total_chunks = 0
+    start = time.perf_counter()
+    for chunk in _chunk_text(stripped):
+        total_chunks += 1
+        prompt = _PROMPT_4B + chunk
+        try:
+            fixed = await _post_chunk(session, _SYSTEM_4B, prompt)
+        except Exception as e:
+            logger.warning("Ошибка OpenRouter (пост-обработка): %s", e)
+            fixed = ""
+
+        if len(fixed) < len(chunk) * 0.5:
+            # защита: ошибка/короткий ответ — оставляем исходный фрагмент
+            logger.warning(
+                "Ответ модели подозрительно короткий (%d из %d символов), "
+                "оставлен исходный фрагмент",
+                len(fixed),
+                len(chunk),
+            )
+            fixed = chunk
+
+        if fixed == chunk:
+            failed_chunks += 1
+
+        results.append(fixed)
+
+    if failed_chunks == total_chunks:
+        logger.warning(
+            "API-LLM не обработал ни один из %d чанков — возвращён сырой текст",
+            total_chunks,
+        )
+
+    logger.info(
+        "API-LLM: пост-обработка заняла %.2f сек (%d чанков, модель=%s)",
+        time.perf_counter() - start,
+        total_chunks,
+        getattr(config, "API_LLM_MODEL", ""),
+    )
+
+    return "\n\n".join(results)
+
 # сама расшифровка
 def transcribe(model, file_path):
     start = time.perf_counter()
@@ -272,4 +401,9 @@ if __name__ == "__main__":
         compute_type="int8_float16" if config.WHISPER_DEVICE == "cuda" else "int8",
     )
     text = transcribe(model, file_path)
-    print(process_audio(text))
+    if _llm_backend() == "api":
+        import asyncio
+
+        print(asyncio.run(process_audio_api(text)))
+    else:
+        print(process_audio(text))

@@ -97,11 +97,13 @@ def write_config(cfg: dict) -> None:
 WHISPER_MODEL = "{cfg['whisper_model']}"
 # Устройство: cuda / cpu
 WHISPER_DEVICE = "{cfg["whisper_device"]}"
-# Пост-обработка: True — whisper + qwen, False — только whisper
-USE_QWEN = {cfg["use_qwen"]}
+# Пост-обработка: "qwen" — локальная GGUF, "api" — LLM по API (OpenRouter), "off" — только whisper
+LLM_BACKEND = "{cfg["llm_backend"]}"
+# Модель OpenRouter для пост-обработки (при LLM_BACKEND="api")
+API_LLM_MODEL = "{cfg["api_llm_model"]}"
 # Режим вывода: True — сразу сырой текст whisper, затем замена на обработанный; False — только финальный
 STREAM_RESULT = {cfg["stream_result"]}
-# Qwen: репозиторий HuggingFace и файл GGUF-квантования
+# Qwen: репозиторий HuggingFace и файл GGUF-квантования (при LLM_BACKEND="qwen")
 # unsloth/Qwen3.5-4B-GGUF / unsloth/Qwen3.5-2B-GGUF
 QWEN_REPO = "{cfg["qwen_repo"]}"
 # Qwen3.5-4B-Q4_K_M.gguf / Qwen3.5-4B-Q5_K_M.gguf / Qwen3.5-2B-Q5_K_M.gguf
@@ -133,17 +135,31 @@ def main() -> None:
     hf_token = ask_str("HF_TOKEN (пусто — без токена HuggingFace)")
 
     print("\n--- Модель Whisper ---")
-    whisper_model = WHISPER_MODELS[ask_choice("Модель Whisper:", WHISPER_MODELS, default=3)]
+    whisper_model = WHISPER_MODELS[ask_choice("Модель Whisper:", WHISPER_MODELS, default=5)]
     whisper_device = ["cuda", "cpu"][ask_choice("Устройство:", ["cuda", "cpu"], default=0)]
 
     print("\n--- Пост-обработка ---")
-    use_qwen = ask_choice("Режим обработки:", ["whisper + qwen", "только whisper"], default=0) == 0
+    llm_backend = ["qwen", "api", "off"][
+        ask_choice(
+            "Режим обработки:",
+            [
+                "whisper + Qwen (локальная GGUF)",
+                "whisper + LLM по API (OpenRouter)",
+                "только whisper",
+            ],
+            default=0,
+        )
+    ]
     qwen_repo, qwen_model = QWEN_MODELS[0]
+    api_llm_model = DEFAULT_MODEL
     stream_result = False
-    if use_qwen:
-        qwen_repo, qwen_model = QWEN_MODELS[
-            ask_choice("Модель Qwen:", [name for _, name in QWEN_MODELS], default=0)
-        ]
+    if llm_backend != "off":
+        if llm_backend == "api":
+            api_llm_model = ask_str("Модель LLM по API для пост-обработки", default=DEFAULT_MODEL)
+        else:
+            qwen_repo, qwen_model = QWEN_MODELS[
+                ask_choice("Модель Qwen:", [name for _, name in QWEN_MODELS], default=0)
+            ]
         stream_result = ask_choice(
             "Режим вывода результата:",
             ["сразу сырой текст, затем заменить на обработанный", "показывать только после обработки"],
@@ -165,9 +181,13 @@ def main() -> None:
     print(f"OpenRouter MODEL:     {model}")
     print(f"HF_TOKEN:             {'указан' if hf_token else '(нет)'}")
     print(f"Whisper:              {whisper_model} ({whisper_device})")
-    print(f"Обработка:            {'whisper + qwen' if use_qwen else 'только whisper'}")
-    if use_qwen:
+    backend_names = {"qwen": "whisper + Qwen (локально)", "api": "whisper + LLM по API", "off": "только whisper"}
+    print(f"Обработка:            {backend_names[llm_backend]}")
+    if llm_backend == "qwen":
         print(f"Qwen:                 {qwen_model}")
+        print(f"Вывод результата:     {'стрим (сразу сырой, затем замена)' if stream_result else 'только после обработки'}")
+    elif llm_backend == "api":
+        print(f"Модель API:           {api_llm_model}")
         print(f"Вывод результата:     {'стрим (сразу сырой, затем замена)' if stream_result else 'только после обработки'}")
     if access == "whitelist":
         print(f"Доступ:               вайтлист: {', '.join(map(str, allowed_users))}")
@@ -190,7 +210,8 @@ def main() -> None:
         {
             "whisper_model": whisper_model,
             "whisper_device": whisper_device,
-            "use_qwen": use_qwen,
+            "llm_backend": llm_backend,
+            "api_llm_model": api_llm_model,
             "stream_result": stream_result,
             "qwen_repo": qwen_repo,
             "qwen_model": qwen_model,

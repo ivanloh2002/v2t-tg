@@ -24,7 +24,7 @@ from dotenv import load_dotenv
 
 import short
 from handlers import user
-from main import setup_proxy_env
+from main import close_api_session, setup_proxy_env
 
 load_dotenv()
 API_TOKEN = os.getenv("API_TOKEN", "")
@@ -55,6 +55,7 @@ async def main():
     dp = Dispatcher()
     dp.include_router(user)
     dp.shutdown.register(short.close_session)
+    dp.shutdown.register(close_api_session)
     await set_main_menu(bot)
     await dp.start_polling(bot)
 
